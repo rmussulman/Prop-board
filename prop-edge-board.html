@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prop Edge Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working column. Controls on top (setup, books, markets, games), the ranked board below, bet log last. */
+:root{
+  --bg:#eef1f5; --panel:#ffffff; --ink:#131c2b; --muted:#5b6779; --line:#d3d9e2;
+  --accent:#b4530a; --accent-ink:#ffffff; --chip:#e3e8ef;
+  --good:#17703f; --warn:#8a5a00; --bad:#a3272b; --good-bg:#dff1e6; --warn-bg:#f8ecc9;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e1522; --panel:#162031; --ink:#e7ecf3; --muted:#93a0b4; --line:#2a374b;
+    --accent:#f0a04b; --accent-ink:#1a1206; --chip:#223047;
+    --good:#6fd09a; --warn:#e6c065; --bad:#f08a8d; --good-bg:#163726; --warn-bg:#3a3013;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+h1{font:700 2.3rem/1 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0}
+header p{margin:0;color:var(--muted);max-width:60ch}
+h2{font:600 1.15rem/1.1 var(--display);letter-spacing:.08em;text-transform:uppercase;margin:0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.sechead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
+.hint{color:var(--muted);font-size:.87rem;margin:0;max-width:75ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.fields .wide{grid-column:span 2}
+@media (max-width:420px){.fields .wide{grid-column:auto}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-width:0}
+input[type=text],input[type=password],input[type=number],select{font:500 .95rem var(--mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;width:100%;min-width:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid transparent;border-radius:999px;padding:5px 12px;font-size:.88rem;cursor:pointer;user-select:none}
+.chip input{accent-color:var(--accent);margin:0}
+.chip:has(input:checked){border-color:var(--accent)}
+.group{display:flex;flex-direction:column;gap:6px}
+.group > span{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+button{font:600 1rem var(--display);letter-spacing:.07em;text-transform:uppercase;border-radius:4px;border:1px solid var(--ink);background:transparent;color:var(--ink);padding:8px 16px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.sm{font-size:.82rem;padding:3px 9px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#status{font:.88rem var(--mono);color:var(--muted);margin:0;overflow-wrap:anywhere}
+#status.err{color:var(--bad)}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:8px 12px;font-size:.9rem;margin:0}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.game{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:4px;padding:8px 10px;cursor:pointer;font-size:.9rem}
+.game input{accent-color:var(--accent);margin-top:4px}
+.game small{display:block;color:var(--muted);font-family:var(--mono);font-size:.78rem}
+.scroll{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th{font:600 .82rem var(--display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:1px solid var(--ink);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td .sub{display:block;color:var(--muted);font-size:.8rem}
+.pill{display:inline-block;font:600 .85rem var(--mono);border-radius:3px;padding:2px 7px;background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.miss{background:var(--chip);color:var(--muted)}
+.others{font:.78rem var(--mono);color:var(--muted);min-width:170px}
+.empty{color:var(--muted);padding:14px 4px;margin:0}
+.pl{font:600 1rem var(--mono)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+details{font-size:.9rem;color:var(--muted)}
+details summary{cursor:pointer;color:var(--ink);font-weight:500}
+details p{max-width:75ch;margin:8px 0 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Prop Edge Board</h1>
+  <p>NFL player props, priced against the rest of the market. It lists a bet only when one of your books pays more than the other books say it should.</p>
+</header>
+
+<section>
+  <div class="sechead"><h2>Setup</h2><span class="hint">Saved in this browser only.</span></div>
+  <div class="fields">
+    <label class="f wide" for="apiKey">Odds API key
+      <input type="password" id="apiKey" autocomplete="off" placeholder="Paste your key from the-odds-api.com">
+    </label>
+    <label class="f" for="bankroll">Bankroll ($)
+      <input type="number" id="bankroll" min="0" step="10" value="500">
+    </label>
+    <label class="f" for="kelly">Stake sizing
+      <select id="kelly">
+        <option value="0.125">Eighth Kelly (cautious)</option>
+        <option value="0.25" selected>Quarter Kelly</option>
+        <option value="0.5">Half Kelly (aggressive)</option>
+      </select>
+    </label>
+    <label class="f" for="minEdge">Minimum edge (%)
+      <input type="number" id="minEdge" min="0" max="20" step="0.5" value="2">
+    </label>
+    <label class="f" for="minBooks">Other books required
+      <input type="number" id="minBooks" min="2" max="7" step="1" value="3">
+    </label>
+    <label class="f" for="maxStake">Max stake (% of bankroll)
+      <input type="number" id="maxStake" min="0.5" max="10" step="0.5" value="2">
+    </label>
+  </div>
+  <div class="group"><span>Books you can bet at</span><div class="chips" id="myBooks"></div></div>
+  <div class="group"><span>Prop types to scan (each one costs 1 credit per game)</span><div class="chips" id="markets"></div></div>
+</section>
+
+<section>
+  <div class="sechead"><h2>Games</h2><span class="hint" id="credits"></span></div>
+  <div class="row">
+    <button id="loadGames">Load this week's games</button>
+    <button id="scan" class="primary" disabled>Scan selected</button>
+    <button id="sample">Show sample data</button>
+    <button id="selAll" class="sm" hidden>Select all</button>
+    <button id="selNone" class="sm" hidden>Select none</button>
+  </div>
+  <p id="status">Paste your key, then load games. Loading the game list is free. Scanning uses credits.</p>
+  <div class="games" id="games"></div>
+</section>
+
+<section>
+  <div class="sechead"><h2>Board</h2><span class="hint" id="boardMeta"></span></div>
+  <p class="banner" id="sampleBanner" hidden>Sample data with made-up teams, players and prices. These are not real bets.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Player and prop</th><th>Bet</th><th>Book</th><th class="n">Price</th><th class="n">Fair</th><th class="n">Edge</th><th class="n">Stake</th><th>Other books (over / under)</th><th></th></tr></thead>
+      <tbody id="board"></tbody>
+    </table>
+  </div>
+  <p class="empty" id="boardEmpty">Nothing scanned yet. Use Show sample data to see how the board reads.</p>
+  <details>
+    <summary>How to read this</summary>
+    <p><b>Fair</b> is the price with no sportsbook margin, averaged across the other books that offer the same line. <b>Edge</b> is your expected profit per dollar at the listed price if that fair number is right. <b>Stake</b> is a fraction of the Kelly bet, capped at your max.</p>
+    <p>A row marked <b>estimate</b> means your book has a different number than the other books, for example 38.5 yards when the rest are at 42.5. The fair price there is worked out from how much that stat usually varies, so it is rougher than a same-line comparison and the stake is halved. Touchdown and interception props are left out of this check.</p>
+    <p>Before betting, open the book and confirm the line and price still match. Props move fast and the feed can lag by a minute or more. An amber edge (8% or higher) usually means a stale line, an injury the other books have already reacted to, or different bet rules, so check the news first.</p>
+    <p>An empty board is a normal result. It means no book is out of line with the market right now.</p>
+  </details>
+</section>
+
+<section>
+  <div class="sechead"><h2>Bet log</h2><span class="pl" id="pl"></span></div>
+  <p class="hint">Log each bet you place and mark the result. After 100 or more bets, the profit figure tells you whether this is working.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Date</th><th>Bet</th><th>Book</th><th class="n">Price</th><th class="n">Stake</th><th class="n">Edge</th><th>Result</th><th></th></tr></thead>
+      <tbody id="log"></tbody>
+    </table>
+  </div>
+  <p class="empty" id="logEmpty">No bets logged yet.</p>
+</section>
+</div>
+
+<script id="core">
+// ---- Pure pricing logic (no page access) ----
+function amToDec(a){ return a > 0 ? 1 + a/100 : 1 + 100/(-a); }
+function probToAm(p){ if(!(p>0&&p<1)) return null; return p >= 0.5 ? Math.round(-100*p/(1-p)) : Math.round(100*(1-p)/p); }
+function fmtAm(a){ return a == null ? "n/a" : (a > 0 ? "+" + a : String(a)); }
+
+// Normal curve helpers, used to move a fair price from one line to a nearby line.
+function normCdf(z){
+  var t = 1/(1 + 0.2316419*Math.abs(z)), d = 0.3989423*Math.exp(-z*z/2);
+  var p = d*t*(0.3193815 + t*(-0.3565638 + t*(1.781478 + t*(-1.821256 + t*1.330274))));
+  return z > 0 ? 1 - p : p;
+}
+function normInv(p){ var lo = -6, hi = 6; for (var i = 0; i < 60; i++){ var m = (lo+hi)/2; if (normCdf(m) < p) lo = m; else hi = m; } return (lo+hi)/2; }
+// Typical game-to-game spread of each stat at a given line. Set on the wide side on purpose:
+// a wider spread makes a line gap count for less, so estimated edges lean low.
+function spreadFor(market, line){
+  switch (market){
+    case "player_pass_yds": return 0.27*line + 5;
+    case "player_rush_yds": return 0.5*line + 10;
+    case "player_reception_yds": return 0.55*line + 8;
+    case "player_rush_reception_yds": return 0.45*line + 10;
+    case "player_receptions": return 1.15*Math.sqrt(line) + 0.3;
+    case "player_pass_completions": return 5.5;
+    case "player_pass_attempts": return 7;
+    case "player_rush_attempts": return 1.1*Math.sqrt(line) + 1;
+    default: return null; // TDs and interceptions: too lumpy to estimate this way
+  }
+}
+
+// events: array of Odds API event-odds responses (american odds).
+// opts: {myBooks:[keys], minBooks, minEdge (fraction), bankroll, kelly, maxStake (fraction), now (ms), staleMin}
+function analyze(events, opts){
+  var rows = [];
+  events.forEach(function(ev){
+    var lines = {}; // key -> {market, player, point, books:{bookKey:{title, over, under, updated}}}
+    (ev.bookmakers || []).forEach(function(bk){
+      (bk.markets || []).forEach(function(m){
+        var upd = m.last_update ? Date.parse(m.last_update) : null;
+        if (upd && opts.now && (opts.now - upd) > (opts.staleMin || 45) * 60000) return; // ignore stale markets
+        (m.outcomes || []).forEach(function(o){
+          if (o.point == null || !o.description) return;
+          var side = o.name === "Over" ? "over" : o.name === "Under" ? "under" : null;
+          if (!side || typeof o.price !== "number" || o.price === 0) return;
+          var key = m.key + "|" + o.description + "|" + o.point;
+          var L = lines[key] || (lines[key] = {market:m.key, player:o.description, point:o.point, books:{}});
+          var B = L.books[bk.key] || (L.books[bk.key] = {title:bk.title, updated:upd});
+          B[side] = o.price;
+        });
+      });
+    });
+    Object.keys(lines).forEach(function(key){
+      var L = lines[key];
+      var full = Object.keys(L.books).filter(function(b){ return L.books[b].over != null && L.books[b].under != null; });
+      var noVig = {};
+      full.forEach(function(b){
+        var io = 1/amToDec(L.books[b].over), iu = 1/amToDec(L.books[b].under);
+        noVig[b] = io/(io+iu);
+      });
+      var best = {};
+      opts.myBooks.forEach(function(mine){
+        var B = L.books[mine]; if (!B) return;
+        var others = full.filter(function(b){ return b !== mine; });
+        if (others.length < opts.minBooks) return;
+        var fairOver = others.reduce(function(s,b){ return s + noVig[b]; }, 0) / others.length;
+        ["over","under"].forEach(function(side){
+          if (B[side] == null) return;
+          var p = side === "over" ? fairOver : 1 - fairOver;
+          var d = amToDec(B[side]);
+          var edge = p*d - 1;
+          if (edge < opts.minEdge) return;
+          if (best[side] && best[side].edge >= edge) return;
+          var f = edge/(d-1) * opts.kelly;
+          f = Math.max(0, Math.min(f, opts.maxStake));
+          best[side] = {
+            game: ev.away_team + " at " + ev.home_team, start: ev.commence_time,
+            market: L.market, player: L.player, point: L.point, side: side,
+            book: mine, bookTitle: B.title, price: B[side],
+            fairProb: p, fairPrice: probToAm(p), edge: edge,
+            stake: Math.round(opts.bankroll * f), nOthers: others.length,
+            others: others.map(function(b){ return {title:L.books[b].title, over:L.books[b].over, under:L.books[b].under}; })
+          };
+        });
+      });
+      if (best.over) rows.push(best.over);
+      if (best.under) rows.push(best.under);
+    });
+
+    // Second pass: one of your books hangs a different number than the rest of the market.
+    var byProp = {};
+    Object.keys(lines).forEach(function(key){
+      var L = lines[key], k = L.market + "|" + L.player;
+      (byProp[k] || (byProp[k] = [])).push(L);
+    });
+    Object.keys(byProp).forEach(function(k){
+      var set = byProp[k]; if (set.length < 2) return;
+      var best = {};
+      opts.myBooks.forEach(function(mine){
+        set.forEach(function(Lm){
+          var B = Lm.books[mine]; if (!B) return;
+          var sameLine = Object.keys(Lm.books).filter(function(b){ return b !== mine && Lm.books[b].over != null && Lm.books[b].under != null; });
+          if (sameLine.length >= opts.minBooks) return; // already priced by the same-line pass
+          // the line most other books agree on
+          var Lc = null, n = 0, others = [];
+          set.forEach(function(L2){
+            if (L2 === Lm) return;
+            var o = Object.keys(L2.books).filter(function(b){ return b !== mine && L2.books[b].over != null && L2.books[b].under != null; });
+            if (o.length > n) { Lc = L2; n = o.length; others = o; }
+          });
+          if (!Lc || n < opts.minBooks) return;
+          var fairAtC = others.reduce(function(s,b){
+            var io = 1/amToDec(Lc.books[b].over), iu = 1/amToDec(Lc.books[b].under); return s + io/(io+iu);
+          }, 0) / n;
+          var sd = spreadFor(Lm.market, Lc.point);
+          if (!sd || Math.abs(Lm.point - Lc.point) > sd) return; // unknown prop type, or a gap too big to be a pricing slip
+          var mean = Lc.point + sd * normInv(fairAtC);
+          var fairOver = normCdf((mean - Lm.point) / sd);
+          ["over","under"].forEach(function(side){
+            if (B[side] == null) return;
+            var p = side === "over" ? fairOver : 1 - fairOver;
+            var d = amToDec(B[side]);
+            var edge = p*d - 1;
+            if (edge < opts.minEdge) return;
+            if (best[side] && best[side].edge >= edge) return;
+            var f = edge/(d-1) * opts.kelly * 0.5; // half size: this fair price is an estimate
+            f = Math.max(0, Math.min(f, opts.maxStake));
+            best[side] = {
+              game: ev.away_team + " at " + ev.home_team, start: ev.commence_time,
+              market: Lm.market, player: Lm.player, point: Lm.point, side: side,
+              book: mine, bookTitle: B.title, price: B[side],
+              fairProb: p, fairPrice: probToAm(p), edge: edge,
+              stake: Math.round(opts.bankroll * f), nOthers: n,
+              estimated: true, marketPoint: Lc.point,
+              others: others.map(function(b){ return {title:Lc.books[b].title, over:Lc.books[b].over, under:Lc.books[b].under}; })
+            };
+          });
+        });
+      });
+      if (best.over) rows.push(best.over);
+      if (best.under) rows.push(best.under);
+    });
+  });
+  rows.sort(function(a,b){ return b.edge - a.edge; });
+  return rows;
+}
+</script>
+
+<script>
+(function(){
+var HOST = "https://api.the-odds-api.com/v4/sports/americanfootball_nfl";
+var BOOKS = [
+  ["fanduel","FanDuel",true],["draftkings","DraftKings",true],["williamhill_us","Caesars",true],
+  ["betmgm","BetMGM",false],["fanatics","Fanatics",false],["espnbet","theScore Bet (ESPN BET)",false],
+  ["betrivers","BetRivers",false],["hardrockbet","Hard Rock Bet",false]
+];
+var MARKETS = [
+  ["player_pass_yds","Passing yards",true],["player_pass_tds","Passing TDs",true],
+  ["player_rush_yds","Rushing yards",true],["player_reception_yds","Receiving yards",true],
+  ["player_receptions","Receptions",true],["player_pass_completions","Completions",false],
+  ["player_pass_attempts","Pass attempts",false],["player_rush_attempts","Rush attempts",false],
+  ["player_pass_interceptions","Interceptions",false],["player_rush_reception_yds","Rush + rec yards",false]
+];
+var MNAME = {}; MARKETS.forEach(function(m){ MNAME[m[0]] = m[1]; });
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+var store = {
+  get:function(k,d){ try{ var v = localStorage.getItem("peb."+k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set:function(k,v){ try{ localStorage.setItem("peb."+k, JSON.stringify(v)); }catch(e){} }
+};
+var lastEvents = null, isSample = false, lastRows = [], log = store.get("log", []);
+
+// ---- build controls ----
+function chips(el, list, saved, name){
+  el.innerHTML = list.map(function(x){
+    var on = saved ? saved.indexOf(x[0]) >= 0 : x[2];
+    return '<label class="chip"><input type="checkbox" id="'+name+'_'+x[0]+'" value="'+x[0]+'"'+(on?" checked":"")+'>'+esc(x[1])+'</label>';
+  }).join("");
+}
+chips($("myBooks"), BOOKS, store.get("myBooks", null), "bk");
+chips($("markets"), MARKETS, store.get("markets", null), "mk");
+["apiKey","bankroll","kelly","minEdge","minBooks","maxStake"].forEach(function(id){
+  var v = store.get(id, null); if (v != null) $(id).value = v;
+  $(id).addEventListener("change", function(){ store.set(id, $(id).value); rerender(); updateCost(); });
+});
+function checked(el){ return Array.prototype.map.call(el.querySelectorAll("input:checked"), function(i){ return i.value; }); }
+$("myBooks").addEventListener("change", function(){ store.set("myBooks", checked($("myBooks"))); rerender(); });
+$("markets").addEventListener("change", function(){ store.set("markets", checked($("markets"))); updateCost(); });
+$("games").addEventListener("change", updateCost);
+
+function status(msg, err){ $("status").textContent = msg; $("status").className = err ? "err" : ""; }
+function opts(){
+  return { myBooks: checked($("myBooks")), minBooks: Math.max(2, +$("minBooks").value || 3),
+    minEdge: (+$("minEdge").value || 0)/100, bankroll: +$("bankroll").value || 0,
+    kelly: +$("kelly").value || 0.25, maxStake: (+$("maxStake").value || 2)/100,
+    now: isSample ? null : Date.now(), staleMin: 45 };
+}
+function updateCost(){
+  var g = checked($("games")).length, m = checked($("markets")).length;
+  $("scan").disabled = !(g && m);
+  $("scan").textContent = g && m ? "Scan selected (up to " + (g*m) + " credits)" : "Scan selected";
+}
+function showCredits(res){
+  var r = res.headers.get("x-requests-remaining");
+  if (r != null) $("credits").textContent = "Credits left this month: " + r;
+}
+function explain(res, body){
+  if (res.status === 401) return "The key was rejected. Check that you pasted it exactly, or that your monthly credits are not used up.";
+  if (res.status === 429) return "Too many requests at once. Wait a few seconds and try again.";
+  if (res.status === 422) return "The odds service refused the request: " + (body && body.message || "invalid request") + ".";
+  return "The odds service returned an error (" + res.status + "). " + (body && body.message || "");
+}
+
+// ---- load games (free) ----
+$("loadGames").addEventListener("click", function(){
+  var key = $("apiKey").value.trim();
+  if (!key) { status("Paste your Odds API key first.", true); return; }
+  status("Loading games…");
+  var to = new Date(Date.now() + 8*864e5).toISOString().slice(0,19) + "Z";
+  var from = new Date().toISOString().slice(0,19) + "Z";
+  fetch(HOST + "/events?apiKey=" + encodeURIComponent(key) + "&commenceTimeFrom=" + from + "&commenceTimeTo=" + to)
+    .then(function(res){ return res.json().then(function(b){ return [res,b]; }, function(){ return [res,null]; }); })
+    .then(function(x){
+      var res = x[0], list = x[1];
+      if (!res.ok) { status(explain(res, list), true); return; }
+      showCredits(res);
+      if (!list.length) { $("games").innerHTML = ""; status("No NFL games in the next 8 days."); updateCost(); return; }
+      list.sort(function(a,b){ return a.commence_time < b.commence_time ? -1 : 1; });
+      $("games").innerHTML = list.map(function(e){
+        var t = new Date(e.commence_time).toLocaleString([], {weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
+        return '<label class="game"><input type="checkbox" id="g_'+esc(e.id)+'" value="'+esc(e.id)+'"><span>'+esc(e.away_team)+' at '+esc(e.home_team)+'<small>'+esc(t)+'</small></span></label>';
+      }).join("");
+      $("selAll").hidden = $("selNone").hidden = false;
+      status(list.length + " games loaded. Tick the ones to scan. Props are usually posted a few days before kickoff.");
+      updateCost();
+    })
+    .catch(function(){ status("Could not reach the odds service. Check your internet connection and try again.", true); });
+});
+function setAll(v){ $("games").querySelectorAll("input").forEach(function(i){ i.checked = v; }); updateCost(); }
+$("selAll").addEventListener("click", function(){ setAll(true); });
+$("selNone").addEventListener("click", function(){ setAll(false); });
+
+// ---- scan (uses credits) ----
+$("scan").addEventListener("click", function(){
+  var key = $("apiKey").value.trim(), ids = checked($("games")), mk = checked($("markets"));
+  if (!key) { status("Paste your Odds API key first.", true); return; }
+  var books = BOOKS.map(function(b){ return b[0]; }).join(",");
+  var out = [], i = 0, failed = null;
+  $("scan").disabled = true;
+  function next(){
+    if (i >= ids.length || failed) {
+      if (out.length) { lastEvents = out; isSample = false; rerender(); }
+      if (failed) status(failed, true);
+      else status("Scanned " + out.length + " of " + ids.length + " games at " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + ". Games with no props posted yet cost nothing.");
+      updateCost(); return;
+    }
+    status("Scanning game " + (i+1) + " of " + ids.length + "…");
+    fetch(HOST + "/events/" + encodeURIComponent(ids[i]) + "/odds?apiKey=" + encodeURIComponent(key) + "&bookmakers=" + books + "&markets=" + mk.join(",") + "&oddsFormat=american")
+      .then(function(res){ return res.json().then(function(b){ return [res,b]; }, function(){ return [res,null]; }); })
+      .then(function(x){
+        if (!x[0].ok) { failed = explain(x[0], x[1]); }
+        else { showCredits(x[0]); out.push(x[1]); }
+        i++; setTimeout(next, 350);
+      })
+      .catch(function(){ failed = "Lost the connection while scanning. Results so far are shown."; next(); });
+  }
+  next();
+});
+
+// ---- sample data (fictional) ----
+$("sample").addEventListener("click", function(){
+  function bk(k,t,ms){ return {key:k, title:t, markets:ms}; }
+  function ou(player, pt, o, u){ return [{name:"Over",description:player,price:o,point:pt},{name:"Under",description:player,price:u,point:pt}]; }
+  function mk(key, sets){ return {key:key, outcomes:[].concat.apply([], sets)}; }
+  lastEvents = [{ id:"sample1", home_team:"Harbor City Gulls", away_team:"Prairie Bison", commence_time:new Date(Date.now()+3*864e5).toISOString(),
+    bookmakers:[
+      bk("fanduel","FanDuel",[mk("player_reception_yds",[ou("Sample TE Four",42.5,-112,-112)]), mk("player_pass_yds",[ou("Sample QB One",248.5,+102,-124)]), mk("player_receptions",[ou("Sample WR Two",5.5,+118,-146)]), mk("player_rush_yds",[ou("Sample RB Three",61.5,-112,-112)])]),
+      bk("draftkings","DraftKings",[mk("player_reception_yds",[ou("Sample TE Four",38.5,-112,-112)]), mk("player_pass_yds",[ou("Sample QB One",248.5,-115,-105)]), mk("player_receptions",[ou("Sample WR Two",5.5,-102,-122)]), mk("player_rush_yds",[ou("Sample RB Three",61.5,-110,-110)])]),
+      bk("williamhill_us","Caesars",[mk("player_reception_yds",[ou("Sample TE Four",42.5,-110,-110)]), mk("player_pass_yds",[ou("Sample QB One",248.5,-118,-106)]), mk("player_receptions",[ou("Sample WR Two",5.5,-105,-125)]), mk("player_rush_yds",[ou("Sample RB Three",61.5,-130,+108)])]),
+      bk("betmgm","BetMGM",[mk("player_reception_yds",[ou("Sample TE Four",42.5,-115,-110)]), mk("player_pass_yds",[ou("Sample QB One",248.5,-120,-105)]), mk("player_receptions",[ou("Sample WR Two",5.5,-110,-120)]), mk("player_rush_yds",[ou("Sample RB Three",61.5,-115,-110)])]),
+      bk("betrivers","BetRivers",[mk("player_reception_yds",[ou("Sample TE Four",42.5,-110,-114)]), mk("player_pass_yds",[ou("Sample QB One",248.5,-117,-108)]), mk("player_receptions",[ou("Sample WR Two",5.5,-104,-124)]), mk("player_rush_yds",[ou("Sample RB Three",61.5,-112,-112)])])
+    ]}];
+  isSample = true; rerender();
+  status("Showing sample data. Load games and scan to replace it with live prices.");
+});
+
+// ---- board ----
+function rerender(){
+  if (!lastEvents) return;
+  var o = opts();
+  var minEdge = o.minEdge; o.minEdge = -1;
+  var all = analyze(lastEvents, o);
+  lastRows = all.filter(function(r){ return r.edge >= minEdge; });
+  // what the scan actually found, so an empty board can be explained
+  var books = {}, props = {}, compared = {};
+  lastEvents.forEach(function(ev){ (ev.bookmakers || []).forEach(function(bk){ (bk.markets || []).forEach(function(m){ (m.outcomes || []).forEach(function(oc){
+    if (oc.description && oc.point != null) { books[bk.title] = 1; props[ev.id + m.key + oc.description] = 1; }
+  }); }); }); });
+  all.forEach(function(r){ compared[r.game + r.market + r.player] = 1; });
+  var nb = Object.keys(books).length, np = Object.keys(props).length, nc = Object.keys(compared).length;
+  var found = np + " props from " + nb + " book" + (nb === 1 ? "" : "s") + (nb ? " (" + Object.keys(books).join(", ") + ")" : "");
+  var pct = function(e){ return (e >= 0 ? "+" : "\u2212") + Math.abs(e*100).toFixed(1) + "%"; };
+  var msg, misses = [];
+  if (!o.myBooks.length) msg = "Tick at least one book you can bet at.";
+  else if (!np) msg = "The scan came back with no player props. Books usually post them one to three days before kickoff, so try again later in the week.";
+  else if (!nc) msg = "Found " + found + ", but none could be priced. A prop needs one of your books plus " + o.minBooks + " other books on the same player. Set Other books required to 2, or scan again closer to kickoff when more books have posted.";
+  else {
+    msg = "Found " + found + " and priced " + nc + " of them. The best one at your books was " + pct(all[0].edge) + ", under your " + (minEdge*100) + "% minimum, so there is nothing to bet. The closest ones are listed for reference only.";
+    misses = all.slice(0, 8);
+  }
+  $("sampleBanner").hidden = !isSample;
+  $("boardEmpty").hidden = lastRows.length > 0;
+  $("boardEmpty").textContent = msg;
+  $("boardMeta").textContent = lastRows.length ? lastRows.length + " bets at " + (+$("minEdge").value) + "% edge or better, from " + nc + " props priced" : "";
+  var shown = lastRows.length ? lastRows : misses, isMiss = !lastRows.length;
+  $("board").innerHTML = shown.map(function(r, i){
+    var big = r.edge >= 0.08;
+    return '<tr><td>'+esc(r.player)+'<span class="sub">'+esc(MNAME[r.market] || r.market)+' · '+esc(r.game)+'</span></td>'
+      + '<td>'+(r.side === "over" ? "Over " : "Under ")+r.point+(r.estimated ? '<span class="sub">Others are at '+r.marketPoint+' · estimate</span>' : '')+'</td>'
+      + '<td>'+esc(r.bookTitle)+'</td>'
+      + '<td class="n">'+fmtAm(r.price)+'</td>'
+      + '<td class="n">'+fmtAm(r.fairPrice)+'<span class="sub">'+(r.fairProb*100).toFixed(1)+'%</span></td>'
+      + '<td class="n"><span class="pill'+(isMiss?" miss":big?" warn":"")+'">'+pct(r.edge)+'</span></td>'
+      + '<td class="n">'+(isMiss ? "no bet" : "$"+r.stake)+'</td>'
+      + '<td class="others">'+r.others.map(function(b){ return esc(b.title)+' '+fmtAm(b.over)+' / '+fmtAm(b.under); }).join("<br>")+(r.estimated ? '<br>all at '+r.marketPoint : '')+'</td>'
+      + '<td>'+(isSample || isMiss ? "" : '<button class="sm" data-log="'+i+'">Log bet</button>')+'</td></tr>';
+  }).join("");
+}
+$("board").addEventListener("click", function(e){
+  var i = e.target.getAttribute && e.target.getAttribute("data-log"); if (i == null) return;
+  var r = lastRows[+i];
+  log.unshift({ id: Date.now(), date: new Date().toISOString().slice(0,10),
+    desc: r.player + " " + (r.side === "over" ? "Over " : "Under ") + r.point + " " + (MNAME[r.market] || r.market),
+    book: r.bookTitle, price: r.price, stake: r.stake, edge: r.edge, result: "open" });
+  store.set("log", log); renderLog();
+  e.target.textContent = "Logged"; e.target.disabled = true;
+});
+
+// ---- bet log ----
+function renderLog(){
+  $("logEmpty").hidden = log.length > 0;
+  var pl = 0, settled = 0;
+  $("log").innerHTML = log.map(function(b){
+    if (b.result === "win") { pl += b.stake * (amToDec(b.price) - 1); settled++; }
+    if (b.result === "loss") { pl -= b.stake; settled++; }
+    var res = ["open","win","loss","push"].map(function(v){ return '<option value="'+v+'"'+(b.result===v?" selected":"")+'>'+v[0].toUpperCase()+v.slice(1)+'</option>'; }).join("");
+    return '<tr><td class="n" style="text-align:left">'+esc(b.date)+'</td><td>'+esc(b.desc)+'</td><td>'+esc(b.book)+'</td><td class="n">'+fmtAm(b.price)+'</td><td class="n">$'+b.stake+'</td><td class="n">+'+(b.edge*100).toFixed(1)+'%</td>'
+      + '<td><select id="res_'+b.id+'" data-res="'+b.id+'" aria-label="Result">'+res+'</select></td><td><button class="sm" data-del="'+b.id+'">Remove</button></td></tr>';
+  }).join("");
+  var el = $("pl");
+  el.textContent = settled ? (pl >= 0 ? "+$" : "-$") + Math.abs(pl).toFixed(2) + " over " + settled + " settled" : "";
+  el.className = "pl " + (pl >= 0 ? "pos" : "neg");
+}
+$("log").addEventListener("change", function(e){
+  var id = e.target.getAttribute("data-res"); if (!id) return;
+  log.forEach(function(b){ if (String(b.id) === id) b.result = e.target.value; });
+  store.set("log", log); renderLog();
+});
+$("log").addEventListener("click", function(e){
+  var id = e.target.getAttribute && e.target.getAttribute("data-del"); if (!id) return;
+  log = log.filter(function(b){ return String(b.id) !== id; });
+  store.set("log", log); renderLog();
+});
+renderLog(); updateCost();
+})();
+</script>
+</body>
+</html>
